@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { UseFormReset } from 'react-hook-form'
 
 import { FormValues } from '../features/search-item'
@@ -31,6 +31,8 @@ const Creators = ({
 
 export const ResultCard = ({ flag, uuid, item, reset }: ResultCardProps) => {
   const { title, creators, itemType, citeKey, date } = item
+  const busyRef = useRef(false)
+  const [busy, setBusy] = useState(false)
 
   const insertCitation = useCallback(async () => {
     if (!citeKey || citeKey === 'N/A') {
@@ -51,12 +53,17 @@ export const ResultCard = ({ flag, uuid, item, reset }: ResultCardProps) => {
   }, [item])
 
   const insertZot = useCallback(async () => {
-    const pageName = await insertZotIntoGraph(item)
-    reset()
-    if (!pageName) return
-
-    await logseq.Editor.updateBlock(uuid, `[[${pageName}]]`)
-  }, [item])
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
+    try {
+      const pageName = await insertZotIntoGraph(item, uuid)
+      if (pageName) reset()
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+    }
+  }, [item, uuid, reset])
 
   const handleClick = () => {
     if (flag === 'citation') insertCitation()
@@ -64,7 +71,7 @@ export const ResultCard = ({ flag, uuid, item, reset }: ResultCardProps) => {
   }
 
   return (
-    <div className="result-card" onClick={handleClick}>
+    <div className="result-card" onClick={handleClick} aria-busy={busy}>
       <div className="result-card-left">
         <div className="result-title-row">
           <span className="result-title">{title}</span>

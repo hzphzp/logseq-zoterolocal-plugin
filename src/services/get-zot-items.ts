@@ -45,6 +45,17 @@ const zotRequest = <T>(
     .get()
     .json<T>()
 
+// The local API paginates. Without this, annotations after the first page vanish.
+const zotRequestAll = async <T>(path: string, query: Record<string, string | number> = {}): Promise<T[]> => {
+  const result: T[] = []
+  for (let start = 0; ; start += 100) {
+    const page = await zotRequest<T[]>(path, { ...query, start, limit: 100 })
+    if (!Array.isArray(page)) throw new Error('Unexpected Zotero list response')
+    result.push(...page)
+    if (page.length < 100) return result
+  }
+}
+
 const zotErrorMessage = (error: unknown): string => {
   if (error instanceof HttpError) {
     return `❌ Connection error: ${error.message}
@@ -85,8 +96,8 @@ const getZotItems = async (queryString?: string) => {
 
     const [zotParentResultsFromSearch, notesAndAttachments] = await Promise.all(
       [
-        zotRequest<ZotItem[]>('/items/top', searchQuery),
-        zotRequest<ZotItem[]>('/items', {
+        zotRequestAll<ZotItem>('/items/top', searchQuery),
+        zotRequestAll<ZotItem>('/items', {
           itemType: 'note||attachment||annotation',
         }),
       ],
@@ -119,7 +130,7 @@ export const getZotItemsWithoutQueryString = () => getZotItems()
 export const getAttachmentsWithAnnotations = async (
   itemKey: string,
 ): Promise<AttachmentItem[]> => {
-  const attachments = await zotRequest<ZotItem[]>(
+  const attachments = await zotRequestAll<ZotItem>(
     `/items/${itemKey}/children`,
     { itemType: 'attachment' },
   )
@@ -127,7 +138,7 @@ export const getAttachmentsWithAnnotations = async (
   const result: AttachmentItem[] = []
 
   for (const attachment of attachments) {
-    const annotations = await zotRequest<ZotItem[]>(
+    const annotations = await zotRequestAll<ZotItem>(
       `/items/${attachment.data.key}/children`,
       { itemType: 'annotation' },
     )
@@ -153,6 +164,10 @@ export const getAttachmentsWithAnnotations = async (
         annotations: mapped,
         ...attachment.links.enclosure,
       })
+    } else if (attachment.data.linkMode === 'linked_file') {
+      result.push({ linkMode: 'linked_url', key: attachment.data.key,
+        annotations: mapped, title: attachment.data.title,
+        url: `zotero://open-pdf/library/items/${attachment.data.key}` })
     } else if (
       attachment.data.linkMode === 'linked_url' &&
       attachment.data.url

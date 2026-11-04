@@ -62,6 +62,14 @@ export const mapItems = async (
         }
         item.attachments.push(att)
         attachmentMap.set(child.data.key, att)
+      } else if (child.data.linkMode === 'linked_file') {
+        const att: AttachmentItem = {
+          linkMode: 'linked_url', key: child.data.key, annotations: [],
+          title: child.data.title,
+          url: `zotero://open-pdf/library/items/${child.data.key}`,
+        }
+        item.attachments.push(att)
+        attachmentMap.set(child.data.key, att)
       } else if (child.data.linkMode === 'linked_url' && child.data.url) {
         const att: AttachmentItem = {
           linkMode: 'linked_url',

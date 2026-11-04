@@ -4,9 +4,7 @@ import { BlockCursorPosition, BlockEntity } from '@logseq/libs/dist/LSPlugin'
 import { createRoot } from 'react-dom/client'
 
 import { handlePopup } from './handle-popup'
-import { GlossaryObj } from './interfaces'
 import { QUERY_ALL_ZOT_PAGES } from './queries'
-import { createTemplateGlossary } from './services/create-template-glossary'
 import { testZotConnection } from './services/get-zot-items'
 import { registerAdminCommands } from './services/register-admin-commands'
 import { syncAnnotations } from './services/sync-annotations'
@@ -14,10 +12,8 @@ import { handleSettings } from './settings'
 import { ZotContainer } from './ZotContainer'
 
 const main = async () => {
-  logseq.UI.showMsg(
-    `logseq-zoterolocal-plugin loaded. Please proceed to settings to continue setup.`,
-    'warning',
-  )
+  const info = await logseq.App.getInfo()
+  if (!info.supportDb) throw new Error('This local edition requires Logseq 2.0.2+ DB graphs')
 
   registerAdminCommands()
   handlePopup()
@@ -116,56 +112,7 @@ const main = async () => {
   //  template: `<a data-on-click="viewZotItems" class="button"><i class="ti ti-news"></i></a>`,
   //})
 
-  // Insert glossary as blocks for user to choose
-  logseq.Editor.registerSlashCommand('Insert Zotero template', async (e) => {
-    const glossaryObj: Partial<GlossaryObj> = {
-      // <% notes %> is not inside because they should belong in the blocks, not properties
-      accessDate: '<% accessDate %>',
-      attachments: '<% attachments %>',
-      citeKey: '<% citeKey %>',
-      collections: '<% collections %>',
-      authors: '<% creators %>',
-      date: '<% date %>',
-      dateAdded: '<% dateAdded %>',
-      dateModified: '<% dateModified %>',
-      DOI: '<% DOI %>',
-      ISBN: '<% ISBN %>',
-      ISSN: '<% ISSN %>',
-      issue: '<% issue %>',
-      itemType: '<% itemType %>',
-      journalAbbreviation: '<% journalAbbreviation %>',
-      key: '<% key %>',
-      language: '<% language %>',
-      libraryCatalog: '<% libraryCatalog %>',
-      libraryLink: '<% libraryLink %>',
-      pages: '<% pages %>',
-      parentItem: '<% parentItem %>',
-      publicationTitle: '<% publicationTitle %>',
-      relations: '<% relations %>',
-      shortTitle: '<% shortTitle %>',
-      tags: '<% tags %>',
-      itemTitle: '<% title %>',
-      url: '<% url %>',
-      version: '<% version %>',
-      volume: '<% volume %>',
-    }
 
-    await logseq.Editor.updateBlock(e.uuid, `Zotero Template`)
-
-    // Add template props
-    await logseq.Editor.upsertBlockProperty(
-      e.uuid,
-      'template',
-      'Zotero Template',
-    )
-    await logseq.Editor.upsertBlockProperty(
-      e.uuid,
-      'template-including-parent',
-      false,
-    )
-
-    await createTemplateGlossary(glossaryObj, e.uuid)
-  })
 }
 
 logseq.ready(main).catch(console.error)

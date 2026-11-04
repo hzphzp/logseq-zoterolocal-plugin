@@ -1,277 +1,103 @@
 import { IBatchBlock } from '@logseq/libs/dist/LSPlugin'
-import { format, parse, parseISO } from 'date-fns'
-
-import { PROP_PRESETS, ZOT_DATA_KEY_MAP } from '../constants'
-import { PropertyPreset, ZotData } from '../interfaces'
+import { ZotData } from '../interfaces'
 import { buildAnnotationContent } from './build-annotation-content'
 import { insertAttachmentBlock } from './insert-attachment-block'
 import { isPageEmpty } from './is-page-empty'
-import { isSchemaAdded } from './is-schema-added'
+import { setLogseqDbSchema } from './set-logseqdb-schema'
+import { findImportedPage, subjectNames } from '../clean-profile'
 import { parseHtml } from './parse-html'
+import { propertyType, selectedProperties, setBibliographicValue } from './property-profile'
 
-export const handleZotInDb = async (zotItem: ZotData, pageName: string) => {
-  // Check if citekey has been configured correctly
-  if (
-    (logseq.settings!.pagenameTemplate as string).includes('<% citeKey %>') &&
-    zotItem.citeKey === 'N/A'
-  ) {
-    //logseq.UI.showMsg(
-    //  'Cite key is not configured properly in BetterBibTex',
-    //  'error',
-    //)
-    throw new Error('Citekey has not been configured properly')
+// Avoid insertBatchBlock's separate tree-write / result-read path in 2.0.2.
+// Every child is awaited and inserted at the end in source order.
+async function insertTree(parent: string, blocks: IBatchBlock[]) {
+  for (const block of blocks) {
+    const inserted = await logseq.Editor.insertBlock(parent, block.content, { sibling: false, before: false })
+    if (!inserted) throw new Error('正文块未写入：' + block.content.slice(0, 60))
+    if (block.children?.length) await insertTree(inserted.uuid, block.children)
   }
+}
 
-  // Check if schema has been added
-  const schemaAdded = await isSchemaAdded()
-  if (!schemaAdded) {
-    await logseq.UI.showMsg(
-      'Double-check settings to ensure that all schema has been setup before trying again',
-      'error',
-    )
-    throw new Error()
+export const handleZotInDb = async (zotItem: ZotData, pageName: string, stage: (s: string) => void = () => {}) => {
+  if (String(logseq.settings?.pagenameTemplate).includes('<% citeKey %>') && zotItem.citeKey === 'N/A') {
+    throw new Error('页名模板需要 citation key，请先配置 Better BibTeX 或改用论文标题。')
   }
+  stage('查找已导入论文')
+  const importedPage = await findImportedPage(zotItem['zotero-code'] ?? zotItem.key)
+  if (importedPage) return importedPage.title
+  let page = await logseq.Editor.getPage(pageName)
+  if (page && !(await isPageEmpty(pageName))) return page.title ?? pageName
 
-  // Create page for Zotero item
-  let existingPage = await logseq.Editor.getPage(pageName)
-  if (existingPage) {
-    if (!(await isPageEmpty(pageName))) {
-      await logseq.UI.showMsg(
-        `Skipped: page "${pageName}" already exists and is not empty`,
-        'warning',
-      )
-      logseq.App.pushState('page', { name: existingPage.name })
-      return
-    }
-  } else {
-    //Create page
-    existingPage = await logseq.Editor.createPage(
-      pageName,
-      {},
-      {
-        redirect: true,
-        createFirstBlock: false,
-        journal: false,
-      },
-    )
-  }
-  if (!existingPage) return
+  stage('准备属性')
+  const schema = await setLogseqDbSchema()
+  const newlyCreated = !page
+  if (!page) page = await logseq.Editor.createPage(pageName, {}, { redirect: false, createFirstBlock: false, journal: false })
+  if (!page) throw new Error('无法创建论文页面')
+  // The DB SDK ignores createFirstBlock; remove only this newly created blank.
+  const initial = newlyCreated ? await logseq.Editor.getPageBlocksTree(page.uuid) : []
+  await logseq.Editor.addBlockTag(page.uuid, schema.tag.uuid)
 
-  // Add Zotero tag to page
-  await logseq.Editor.addBlockTag(
-    existingPage.uuid,
-    logseq.settings?.zotTag as string,
-  )
-
-  /*
-  1. Adds props to page
-  2. Adds abstract, attachments and annotations to page
-  */
-
-  // Resolve which properties to use based on the selected preset
-  const preset = (logseq.settings?.propertyPreset as PropertyPreset) ?? 'Core'
-  let userSelectedPageProps: string[]
-  if (preset === 'Custom') {
-    userSelectedPageProps = logseq.settings?.pageProps as string[]
-  } else if (preset === 'Full') {
-    userSelectedPageProps = Object.keys(ZOT_DATA_KEY_MAP).filter(
-      (prop) =>
-        prop !== 'abstractNote' &&
-        prop !== 'attachments' &&
-        prop !== 'notes' &&
-        prop !== 'inGraph',
-    )
-  } else {
-    userSelectedPageProps = [...PROP_PRESETS[preset]]
-  }
-  for (const prop of userSelectedPageProps) {
-    console.log('Inserting prop into page', prop)
-
-    let fixedProp = ''
-    if (prop !== 'ISSN' && prop !== 'ISBN' && prop !== 'DOI') {
-      fixedProp = prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
+  for (const key of selectedProperties()) {
+    const value = (zotItem as unknown as Record<string, unknown>)[key]
+    if (value == null || value === '' || (Array.isArray(value) && !value.length)) continue
+    if (typeof value === 'object' && !Array.isArray(value)) continue
+    stage(`写入属性 ${key}`)
+    const property = schema.properties.get(key)!
+    if (key === 'creators') {
+      const names = (zotItem.creators ?? []).map(creator =>
+        creator.name || [creator.firstName, creator.lastName].filter(Boolean).join(' ')).filter(Boolean)
+      if (propertyType(property) === 'node') {
+        for (const name of names) await setBibliographicValue(page.uuid, property, name)
+      } else if (names.length) await setBibliographicValue(page.uuid, property, names.join('；'))
     } else {
-      fixedProp = prop
+      await setBibliographicValue(page.uuid, property, value)
     }
+  }
 
-    // @ts-expect-error need to type later
-    const value = zotItem[prop]
-
-    /*******
-    Insert properties
-    *******/
-    if (
-      prop === 'inGraph' ||
-      prop === 'annotations' ||
-      prop === 'attachments' ||
-      prop === 'abstractNote' ||
-      prop === 'notes' ||
-      prop === 'version' ||
-      prop === 'collections' ||
-      prop === 'pages' ||
-      prop === 'parentItem' ||
-      value === undefined ||
-      value === null ||
-      value === '' ||
-      (Array.isArray(value) && value.length === 0) || // Empty array
-      (typeof value === 'object' && Object.keys(value).length === 0)
-    ) {
-      continue
-      //} else if (prop === 'attachments') {
-      //  for (const attachment of value) {
-      //    const url = `![${attachment.title}](${decodeURI(attachment.url ?? attachment.href)})`
-      //    await logseq.Editor.upsertBlockProperty(
-      //      existingPage.uuid,
-      //      fixedProp,
-      //      url,
-      //    )
-      //  }
-    } else if (
-      prop === 'accessDate' ||
-      prop === 'dateAdded' ||
-      prop === 'dateModified'
-    ) {
-      const page = await logseq.Editor.createJournalPage(
-        format(
-          parseISO(value) || parse(value, 'yyyy-MM-dd', new Date()),
-          'yyyy-MM-dd',
-        ),
-      )
-      if (!page) continue
-      await logseq.Editor.upsertBlockProperty(
-        existingPage.uuid,
-        fixedProp,
-        page.id,
-      )
-    } else if (prop === 'creators') {
-      const creatorPageIds: number[] = []
-
-      for (const creator of value) {
-        const page = await logseq.Editor.createPage(
-          `${creator.firstName} ${creator.lastName}`,
-          {},
-          { redirect: false },
-        )
-        if (page) creatorPageIds.push(page.id)
-      }
-
-      for (const id of creatorPageIds) {
-        await logseq.Editor.upsertBlockProperty(
-          existingPage.uuid,
-          'creators',
-          id,
-        )
-      }
-    } else if (prop === 'tags') {
-      const tagPageIds = []
-
-      for (const t of value) {
-        const page = await logseq.Editor.createPage(
-          t.tag,
-          {},
-          { redirect: false },
-        )
-        if (page) tagPageIds.push(page.id)
-      }
-
-      for (const id of tagPageIds) {
-        await logseq.Editor.upsertBlockProperty(existingPage.uuid, 'tags', id)
-      }
+  stage('保留学科标签')
+  const tags = await logseq.Editor.getAllTags()
+  for (const name of subjectNames(zotItem.tags ?? [])) {
+    if (name.includes('/')) {
+      await setBibliographicValue(page.uuid, schema.properties.get('subject-labels')!, name)
     } else {
-      await logseq.Editor.upsertBlockProperty(
-        existingPage.uuid,
-        fixedProp,
-        value,
-      )
+      const tag = tags?.find(t => t.title?.toLocaleLowerCase() === name.toLocaleLowerCase()) ?? await logseq.Editor.createTag(name)
+      if (tag) await logseq.Editor.addBlockTag(page.uuid, tag.uuid)
     }
   }
 
-  // Always populate zotero-code (not part of presets, but always needed)
-  if (zotItem['zotero-code']) {
-    await logseq.Editor.upsertBlockProperty(
-      existingPage.uuid,
-      'zotero-code',
-      zotItem['zotero-code'],
-    )
-  }
-
-  await logseq.Editor.upsertBlockProperty(
-    existingPage.uuid,
-    'zotero-last-sync',
-    Date.now(),
-  )
-
-  /*******
-    Insert blocks
-    *******/
-
-  let glossaryBatchBlk: IBatchBlock[] = []
-
-  // Insert attachments with annotations — done individually so we can set
-  // the zotero-attachment-key property on each attachment block for sync
-  if (zotItem.attachments && zotItem.attachments.length > 0) {
-    const headerBlock = await logseq.Editor.insertBlock(
-      existingPage.uuid,
-      '## Attachments and Annotations',
-      { sibling: false },
-    )
-
-    if (headerBlock) {
-      for (const attachment of zotItem.attachments) {
-        const attachmentBlock = await insertAttachmentBlock(
-          headerBlock.uuid,
-          attachment,
-        )
-
-        if (attachmentBlock) {
-          // Insert annotations sorted by document position
-          const sortedAnnotations = [...attachment.annotations].sort((a, b) =>
-            a.annotationSortIndex.localeCompare(b.annotationSortIndex),
-          )
-          for (const annotation of sortedAnnotations) {
-            if (!annotation.annotationText) continue
-            const annotationBlock = await logseq.Editor.insertBlock(
-              attachmentBlock.uuid,
-              buildAnnotationContent(annotation),
-              { sibling: false },
-            )
-
-            if (annotationBlock && annotation.annotationComment) {
-              await logseq.Editor.insertBlock(
-                annotationBlock.uuid,
-                annotation.annotationComment,
-                { sibling: false },
-              )
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Insert abstract
+  stage('写入摘要')
   if (zotItem.abstractNote) {
-    const abstractBlk = {
-      content: '## Abstract',
-      children: [
-        {
-          content: zotItem.abstractNote
-            .split('\n')
-            .map((line) => line.replace(/\s+/g, ' ').trim())
-            .filter((line) => line.length > 0)
-            .join('\n'),
-        },
-      ],
+    await insertTree(page.uuid, [{ content: '## 摘要', children: [{ content: zotItem.abstractNote.trim() }] }])
+  }
+  stage('写入 Zotero 笔记')
+  const notes = zotItem.notes?.flatMap(note => parseHtml(note.note)) ?? []
+  if (notes.length) await insertTree(page.uuid, [{ content: '## 笔记', children: notes }])
+
+  stage('写入附件与批注')
+  if (zotItem.attachments?.length) {
+    const header = await logseq.Editor.insertBlock(page.uuid, '## 附件与批注', { sibling: false, before: false })
+    if (!header) throw new Error('无法写入附件分区')
+    for (const attachment of zotItem.attachments) {
+      const block = await insertAttachmentBlock(header.uuid, attachment)
+      if (!block) throw new Error('无法写入附件：' + attachment.title)
+      for (const a of [...attachment.annotations].sort((a, b) => a.annotationSortIndex.localeCompare(b.annotationSortIndex))) {
+        if (!a.annotationText) continue
+        await insertTree(block.uuid, [{ content: buildAnnotationContent(a),
+          ...(a.annotationComment ? { children: [{ content: a.annotationComment }] } : {}) }])
+      }
     }
-    glossaryBatchBlk.push(abstractBlk)
   }
 
-  // Insert notes
-  if (zotItem.notes && zotItem.notes.length > 0 && zotItem.notes[0]) {
-    const htmlBlk = parseHtml(zotItem.notes[0].note)
-    glossaryBatchBlk = [...glossaryBatchBlk, ...htmlBlk]
+  stage('保存导入标识')
+  await logseq.Editor.upsertBlockProperty(page.uuid, 'zotero-code', zotItem['zotero-code'] ?? zotItem.key)
+  await logseq.Editor.upsertBlockProperty(page.uuid, 'zotero-last-sync', Date.now())
+  for (const blank of initial ?? []) {
+    const current = await logseq.Editor.getBlock(blank.uuid, { includeChildren: true })
+    if (current && !(current.content ?? current.title ?? '').trim() && !current.children?.length &&
+        !(Array.isArray(current.refs) && current.refs.length) && !Object.keys(current.properties ?? {}).length &&
+        !Object.keys(current).some(k => /^:(?:user|plugin)\.property[./]/.test(k))) {
+      await logseq.Editor.removeBlock(blank.uuid)
+    }
   }
-
-  if (glossaryBatchBlk.length > 0)
-    await logseq.Editor.insertBatchBlock(existingPage.uuid, glossaryBatchBlk)
+  return page.title ?? pageName
 }

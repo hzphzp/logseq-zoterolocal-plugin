@@ -63,7 +63,7 @@ export const DataTable = memo(({ data }: TableProps) => {
     }
 
     try {
-      await Promise.all(data.map((item) => insertZotIntoGraph(item)))
+      for (const item of data) await insertZotIntoGraph(item)
     } catch (error) {
       logseq.UI.showMsg(
         'Error inserting items. You may wish to go to your file explorer to check which ZotItems have been inserted',

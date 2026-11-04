@@ -31,7 +31,7 @@ export const syncAnnotations = async (pageName: string) => {
 
   let attachmentsBlock = blockTree.find((b) => {
     const title = normalizeHeading(blockText(b))
-    return title === 'Attachments and Annotations' || title === 'Attachments'
+    return ['Attachments and Annotations', 'Attachments', '附件与批注', '附件'].includes(title)
   })
 
   const existingAttachmentBlocks =
@@ -43,7 +43,7 @@ export const syncAnnotations = async (pageName: string) => {
     if (!lastBlock) throw new Error('Page has no blocks')
     attachmentsBlock = (await logseq.Editor.insertBlock(
       lastBlock.uuid,
-      '## Attachments and Annotations',
+      '## 附件与批注',
       { sibling: true },
     )) as BlockEntity
     return attachmentsBlock

@@ -2,6 +2,7 @@ import { SettingSchemaDesc } from '@logseq/libs/dist/LSPlugin.user'
 
 import { ZOT_DATA_KEY_MAP } from './constants'
 import { PropertyPreset } from './interfaces'
+import { CLEAN_PROPERTIES } from './clean-profile'
 
 export const PRESET_CHOICES: PropertyPreset[] = [
   'Minimal',
@@ -45,7 +46,7 @@ export const handleSettings = ({ msg }: { msg: string }) => {
       title: 'Property Preset (DB version)',
       description:
         'Choose a preset to control which properties are added to Zotero pages. "Minimal" includes just the essentials (title, date, author, DOI/ISBN, item type, Zotero link). "Core" adds common citation fields. "Academic Extended" adds dates, institutional, and manuscript fields. "Full" includes everything. "Custom" lets you pick individual properties below.',
-      default: 'Core',
+      default: 'Custom',
       enumPicker: 'select',
       enumChoices: PRESET_CHOICES,
     },
@@ -54,7 +55,7 @@ export const handleSettings = ({ msg }: { msg: string }) => {
       type: 'enum',
       title: 'Custom Page Properties (DB version)',
       description: `Only used when Property Preset is set to "Custom". Select the properties to include for each Zotero item. After changing, invoke the command palette and use 'Add Zotero schema to Logseq'.`,
-      default: filteredPropsArray,
+      default: CLEAN_PROPERTIES,
       enumPicker: 'checkbox',
       enumChoices: filteredPropsArray,
     },
@@ -74,14 +75,14 @@ export const handleSettings = ({ msg }: { msg: string }) => {
       title: 'Open Attachment in Logseq (DB version)',
       description:
         'Only applies when Attachment Import Mode is "Markdown link". If enabled, attachments are embedded inline so they open within Logseq. If disabled, they are a plain link that opens in the default system app.',
-      default: true,
+      default: false,
     },
     {
       key: 'pagenameTemplate',
       type: 'string',
       title: 'Page Name Template',
       description: `Specify the page name for each Zotero import. Available placeholders: <% citeKey %>, <% title %>`,
-      default: `R: <% citeKey %>`,
+      default: `@<% title %>`,
     },
     {
       key: 'citekeyTemplate',

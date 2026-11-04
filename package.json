@@ -1,37 +1,23 @@
 {
   "name": "logseq-zoterolocal-plugin",
   "author": "benjypng",
-  "description": "Connect to Zotero locally using Zotero Beta 7 (and above), import and keep track of your Zotero library.",
+  "description": "Clean Zotero import for Logseq 2.0.2+ (2.x) DB graphs. File graphs are not supported.",
   "license": "MIT",
   "logseq": {
     "id": "logseq-zoterolocal-plugin",
-    "title": "logseq-zoterolocal-plugin",
+    "title": "Zotero Local · 精简导入",
     "icon": "./icon.svg",
-    "main": "dist/index.html"
+    "main": "dist/index.html",
+    "supportsDB": true,
+    "supportsDBOnly": true
   },
   "scripts": {
     "dev": "bunx vite",
-    "build": "bunx vite build",
+    "build": "vite build",
     "prepare": "husky",
-    "lint:precommit": "echo \"Running biome\" && bunx biome check . --write && echo \"Running tsc\" && bunx tsc --noEmit"
-  },
-  "release": {
-    "branches": [
-      "main"
-    ],
-    "plugins": [
-      [
-        "@semantic-release/github",
-        {
-          "assets": [
-            "logseq-zoterolocal-plugin.zip"
-          ],
-          "options": {
-            "successComment": false
-          }
-        }
-      ]
-    ]
+    "lint:precommit": "npm run check",
+    "check": "tsc --noEmit --incremental false",
+    "test": "esbuild test/entry.ts --bundle --platform=node --format=esm --outfile=.test-build/entry.mjs && node test/integration.mjs"
   },
   "dependencies": {
     "@benjypng/logseq-request": "^1.0.2",
@@ -50,6 +36,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "husky": "^9.1.7",
+    "jsdom": "^26.1.0",
     "postcss": "^8.5.6",
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.6.2",
@@ -57,5 +44,17 @@
     "vite": "^7.2.4",
     "vite-plugin-logseq": "^1.1.2",
     "vite-tsconfig-paths": "^5.1.4"
+  },
+  "version": "3.5.6-clean.2",
+  "supportsDB": true,
+  "supportsDBOnly": true,
+  "main": "dist/index.html",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hzphzp/logseq-zoterolocal-plugin.git"
+  },
+  "homepage": "https://github.com/hzphzp/logseq-zoterolocal-plugin",
+  "bugs": {
+    "url": "https://github.com/hzphzp/logseq-zoterolocal-plugin/issues"
   }
 }

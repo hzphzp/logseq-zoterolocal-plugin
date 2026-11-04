@@ -264,6 +264,7 @@ export interface CollectionItem {
 }
 
 export interface CreatorItem {
+  name?: string
   firstName: string
   lastName: string
   creatorType: string
