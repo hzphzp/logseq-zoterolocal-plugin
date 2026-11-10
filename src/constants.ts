@@ -1,12 +1,11 @@
 import { PropertyPreset, ZotItem } from './interfaces'
 
-export const ZOTERO_PROP = ':plugin.property.logseq-zoterolocal-plugin'
-export const ZOTERO_CODE_PROP =
-  ':plugin.property.logseq-zoterolocal-plugin/zotero-code'
-export const ZOTERO_LAST_SYNC_PROP =
-  ':plugin.property.logseq-zoterolocal-plugin/zotero-last-sync'
-export const ZOTERO_ATTACHMENT_KEY_PROP =
-  ':plugin.property.logseq-zoterolocal-plugin/zotero-attachment-key'
+export const PROPERTY_NS = 'plugin.property.logseq-zotero-local-clean'
+export const LEGACY_NS = 'plugin.property.logseq-zoterolocal-plugin'
+
+export function trackingValue(properties: Record<string, unknown>, key: string) {
+  return properties[`:${PROPERTY_NS}/${key}`] ?? properties[`:${LEGACY_NS}/${key}`]
+}
 export const ZOT_URL = 'http://127.0.0.1:23119/api/users/0'
 export const COLLECTIONS_URL = 'http://127.0.0.1:23119/api/users/0/collections'
 export const ZOTERO_LIBRARY_ITEM = 'zotero://select/library/items/'

@@ -1,6 +1,7 @@
 import { BlockEntity } from '@logseq/libs/dist/LSPlugin'
 
-import { ZOTERO_ATTACHMENT_KEY_PROP, ZOTERO_CODE_PROP } from '../constants'
+import { trackingValue } from '../constants'
+import { setLogseqDbSchema } from './set-logseqdb-schema'
 import { buildAnnotationContent } from './build-annotation-content'
 import { getAttachmentsWithAnnotations } from './get-zot-items'
 import { insertAttachmentBlock } from './insert-attachment-block'
@@ -17,9 +18,10 @@ export const syncAnnotations = async (pageName: string) => {
   const pageProps = await logseq.Editor.getPageProperties(pageName)
   if (!pageProps) throw new Error('No page properties found')
 
-  const itemKey = pageProps[ZOTERO_CODE_PROP]
+  const itemKey = trackingValue(pageProps, 'zotero-code')
   if (!itemKey) throw new Error('Not a valid Zotero page')
 
+  await setLogseqDbSchema()
   const attachments = await getAttachmentsWithAnnotations(itemKey as string)
   if (attachments.length === 0) {
     await logseq.UI.showMsg('No attachments found in Zotero', 'warning')
@@ -58,7 +60,7 @@ export const syncAnnotations = async (pageName: string) => {
     for (const child of existingAttachmentBlocks) {
       const block = child as BlockEntity
       const blockProps = await logseq.Editor.getBlockProperties(block.uuid)
-      if (blockProps?.[ZOTERO_ATTACHMENT_KEY_PROP] === attachment.key) {
+      if (blockProps && trackingValue(blockProps, 'zotero-attachment-key') === attachment.key) {
         targetBlock = block
         break
       }

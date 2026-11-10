@@ -29,7 +29,7 @@ const main = async () => {
   ///////// SYNC ANNOTATIONS ////////
   ///////////////////////////////////
   logseq.App.registerPageMenuItem(
-    'Zotero: Sync annotations',
+    'Zotero Clean: Sync annotations',
     async ({ page }) => {
       try {
         await syncAnnotations(page)
@@ -44,8 +44,8 @@ const main = async () => {
 
   logseq.App.registerCommandPalette(
     {
-      key: 'zoterolocal-plugin-sync-all-annotations',
-      label: 'logseq-zoterolocal-plugin: Sync all annotations',
+      key: 'zotero-local-clean-sync-all-annotations',
+      label: 'Zotero Clean: Sync all annotations',
     },
     async () => {
       const allZoteroPages: BlockEntity[][] =
@@ -62,7 +62,7 @@ const main = async () => {
   ///////////////////////////////////
   // INSERT FULL DOCUMENT IN GRAPH //
   ///////////////////////////////////
-  logseq.Editor.registerSlashCommand('Zotero: Insert full item', async (e) => {
+  logseq.Editor.registerSlashCommand('Zotero Clean: Insert full item', async (e) => {
     const { rect } =
       (await logseq.Editor.getEditingCursorPosition()) as BlockCursorPosition
     root.render(<ZotContainer flag={'full'} uuid={e.uuid} rect={rect} />)
@@ -81,7 +81,7 @@ const main = async () => {
   // INSERT CITATION IN GRAPH //
   //////////////////////////////
   logseq.Editor.registerSlashCommand(
-    'Zotero: Cite (insert citation)',
+    'Zotero Clean: Cite (insert citation)',
     async (e) => {
       const { rect } =
         (await logseq.Editor.getEditingCursorPosition()) as BlockCursorPosition

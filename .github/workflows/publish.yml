@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -20,3 +20,18 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm run build
+      - name: Build marketplace release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          id=$(node -p 'require("./package.json").logseq.id')
+          version=$(node -p 'require("./package.json").version')
+          test "$GITHUB_REF_NAME" = "v$version"
+          mkdir "$id"
+          cp -R dist package.json README.md LICENSE.md icon.svg "$id/"
+          mkdir "$id/screenshots"
+          cp screenshots/portal.png "$id/screenshots/"
+          zip -qr "$id.zip" "$id"
+          gh release create "$GITHUB_REF_NAME" "$id.zip" --verify-tag --latest --title "v$version — Zotero Local Clean" --notes-file "docs/releases/$GITHUB_REF_NAME.md"

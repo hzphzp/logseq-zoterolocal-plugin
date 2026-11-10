@@ -1,11 +1,11 @@
 {
-  "name": "logseq-zoterolocal-plugin",
+  "name": "logseq-zotero-local-clean",
   "author": "benjypng",
   "description": "Clean Zotero import for Logseq 2.0.2+ (2.x) DB graphs. File graphs are not supported.",
   "license": "MIT",
   "logseq": {
-    "id": "logseq-zoterolocal-plugin",
-    "title": "Zotero Local · 精简导入",
+    "id": "logseq-zotero-local-clean",
+    "title": "Zotero Local Clean",
     "icon": "./icon.svg",
     "main": "dist/index.html",
     "supportsDB": true,
@@ -45,7 +45,7 @@
     "vite-plugin-logseq": "^1.1.2",
     "vite-tsconfig-paths": "^5.1.4"
   },
-  "version": "3.5.6-clean.2",
+  "version": "3.5.7",
   "supportsDB": true,
   "supportsDBOnly": true,
   "main": "dist/index.html",

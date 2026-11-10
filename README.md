@@ -1,10 +1,10 @@
 # Zotero Local · 精简导入
 
 面向 **Logseq 2.0.2 起的 2.x 数据库图谱（DB graph）** 的 Zotero 本机导入插件。
-当前版本 **3.5.6-clean.2**，已在 **Logseq Desktop 2.0.2 / 533ac43** 验证。
+当前版本 **3.5.7**，已在 **Logseq Desktop 2.0.2 / 533ac43** 验证。
 **不支持 Logseq 0.10.x 和 Markdown／Org 文件图谱。** 后续 Logseq 版本仍需验证兼容性。
 
-这是 [benjypng/logseq-zoterolocal-plugin](https://github.com/benjypng/logseq-zoterolocal-plugin) v3.5.6 的独立维护分支，保留上游 MIT 许可证和署名。此版本由 [hzphzp](https://github.com/hzphzp) 维护，未上架插件市场。
+这是 [benjypng/logseq-zoterolocal-plugin](https://github.com/benjypng/logseq-zoterolocal-plugin) v3.5.6 的独立维护分支，保留上游 MIT 许可证和署名。此版本由 [hzphzp](https://github.com/hzphzp) 维护，以独立插件 ID `logseq-zotero-local-clean` 发行。
 
 ## 导入结果
 
@@ -19,22 +19,21 @@
 
 ## 安装与升级
 
-1. 从 [Releases](https://github.com/hzphzp/logseq-zoterolocal-plugin/releases) 下载 `logseq-zoterolocal-plugin.zip`。
-2. 完全退出 Logseq。若已有同名插件，先备份其目录，再将解压后的 `logseq-zoterolocal-plugin` 目录放入 `~/.logseq/plugins/`。
-3. 重新打开 Logseq，应用会自动发现这个目录。在插件页确认 `Zotero Local · 精简导入` 已启用。
-4. 本分支保留插件 ID `logseq-zoterolocal-plugin` 以兼容已有属性，不能与上游版本同时启用。后续更新请使用本仓库 Release。
+从 [GitHub Releases](https://github.com/hzphzp/logseq-zoterolocal-plugin/releases) 下载 `logseq-zotero-local-clean.zip`，解压到 Logseq 插件目录后重载。商店名称为 **Zotero Local Clean**。之前使用精简版的用户可以禁用旧插件，再启用新版。旧版论文和批注的追踪字段仍可识别，用户自定义设置需在新版插件中填写。
 
-不需要寻找“载入解压的插件”；该按钮只在开发者模式下显示。
+**English:** Import Zotero references, notes and annotations into a Logseq DB graph, preserve subject tags and reuse existing papers. Start Zotero with its local API enabled, then choose **/Zotero Clean: Insert full item** in Logseq.
+
+![Zotero local library search](screenshots/portal.png)
 
 ## 使用
 
 1. 保持 Zotero 打开。在 Zotero 设置 → 高级，启用“允许此计算机上的其他应用程序与 Zotero 通信”。默认连接地址是 `http://127.0.0.1:23119/api/users/0`。
-2. 打开 Logseq DB 图谱，在空白块输入 `/Zotero`，选择 **Zotero: Insert full item**。
+2. 打开 Logseq DB 图谱，在空白块输入 `/Zotero`，选择 **Zotero Clean: Insert full item**。
 3. 搜索并选择论文。插件创建或复用论文页面，并在原块插入引用。
 
-默认使用 `Custom` 精简属性预设。新图谱会自动创建所需属性，已有图谱优先复用迁移属性。对于已经导入的页面，选择同一条目不会自动覆盖正文；新增 PDF 批注可用页面菜单 **Zotero: Sync annotations**。
+默认使用 `Custom` 精简属性预设。新图谱会自动创建所需属性，已有图谱优先复用迁移属性。对于已经导入的页面，选择同一条目不会自动覆盖正文；新增 PDF 批注可用页面菜单 **Zotero Clean: Sync annotations**。
 
-`Zotero: Cite (insert citation)` 使用 Better BibTeX citation key，不是完整论文导入入口。
+`Zotero Clean: Cite (insert citation)` 使用 Better BibTeX citation key，不是完整论文导入入口。
 
 ## 旧图谱与附件
 

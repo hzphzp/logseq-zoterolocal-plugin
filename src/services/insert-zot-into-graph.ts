@@ -22,7 +22,7 @@ export async function insertPaperReference(blockUuid: string, pageName: string) 
   const text = (block.content ?? block.title ?? '').trim()
   const reference = `[[${page.uuid}]]`
   if (text.includes(reference) || text.includes(`[[${pageName}]]`)) return true
-  const content = text.replace(/\/?Zotero: Insert full item\s*$/, '').trim()
+  const content = text.replace(/\/?Zotero(?: Clean)?: Insert full item\s*$/, '').trim()
   await logseq.Editor.updateBlock(blockUuid, content ? `${content} ${reference}` : reference)
   return true
 }

@@ -1,6 +1,6 @@
 import { PageEntity } from '@logseq/libs/dist/LSPlugin'
 import { CLEAN_PROPERTIES, TECHNICAL_PROPERTIES } from '../clean-profile'
-import { PROP_PRESETS, ZOT_DATA_KEY_MAP } from '../constants'
+import { PROP_PRESETS, ZOT_DATA_KEY_MAP, PROPERTY_NS } from '../constants'
 import { PropertyPreset } from '../interfaces'
 import { convertPropToKebabCase } from './convert-prop-to-kebab'
 
@@ -33,7 +33,7 @@ export function existingProperty(key: string, properties: PropertyDefinition[]) 
       if (matches[0]) return matches[0]
     }
   }
-  return properties.find(p => propertyIdent(p) === `plugin.property.logseq-zoterolocal-plugin/${name}`)
+  return properties.find(p => propertyIdent(p) === `${PROPERTY_NS}/${name}`)
 }
 
 export async function setBibliographicValue(blockUuid: string, property: PropertyDefinition, value: unknown) {

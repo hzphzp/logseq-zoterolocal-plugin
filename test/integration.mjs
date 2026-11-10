@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { JSDOM } from 'jsdom'
 import { handleZotInDb, CLEAN_PROPERTIES, findImportedPage, parseHtml, insertZotIntoGraph, errorMessage, mapItems } from '../.test-build/entry.mjs'
 
-const prefix = 'plugin.property.logseq-zoterolocal-plugin/'
+const prefix = 'plugin.property.logseq-zotero-local-clean/'
 const kw = s => '~:' + s
 const uid = s => '~u' + s
 const str = s => /^[~^`]/.test(s) ? '~' + s : s
@@ -109,6 +109,12 @@ try {
   assert.equal(await handleZotInDb(item, '@Test paper'), 'My renamed research note')
   assert.equal(query('[:find (count ?b) :where [?b :block/uuid]]')[0][0], before)
   assert.equal(getPage('@Test paper'), undefined)
+  const legacyCode = 'plugin.property.logseq-zoterolocal-plugin/zotero-code'
+  await op('upsert-property', [kw(legacyCode), map({'logseq.property/type':kw('default'),
+    'db/cardinality':kw('db.cardinality/one')}), map({'property-name':'zotero-code'})])
+  const beforeRename = await logseq.Editor.createPage('Previous clean edition')
+  await logseq.Editor.upsertBlockProperty(beforeRename.uuid, legacyCode, 'EARLIER1')
+  assert.equal((await findImportedPage('EARLIER1')).uuid, beforeRename.uuid)
   cli('upsert', 'property', '--name', 'links', '--type', 'default')
   const legacyProp = (await logseq.Editor.getAllProperties()).find(p => p.title === 'links')
   const legacy = await logseq.Editor.createPage('Migrated paper')

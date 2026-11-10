@@ -1,3 +1,5 @@
+import { PROPERTY_NS, LEGACY_NS } from './constants'
+
 // Local profile for Logseq 2.0.2 DB graphs. No Markdown property drawers.
 export const CLEAN_PROPERTIES = [
   'date', 'creators', 'itemType', 'DOI', 'ISBN', 'publicationTitle',
@@ -14,7 +16,7 @@ export async function findImportedPage(itemKey: string) {
   if (!/^[A-Z0-9]+$/.test(itemKey)) throw new Error('Invalid Zotero item key')
   const direct = await logseq.DB.datascriptQuery(`[:find (pull ?b [*])
     :where [?b :block/name]
-    [?b :plugin.property.logseq-zoterolocal-plugin/zotero-code ?value]
+    (or [?b :${PROPERTY_NS}/zotero-code ?value] [?b :${LEGACY_NS}/zotero-code ?value])
     [?value :block/title "${itemKey}"]]`)
   if (direct?.length) return direct[0][0]
   const props = await logseq.Editor.getAllProperties()
